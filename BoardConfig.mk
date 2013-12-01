@@ -69,12 +69,20 @@ BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := device/lge/p990/config/bluetooth
 BOARD_BLUETOOTH_LIBBT_VNDCFG := device/lge/p990/config/bluetooth/bt_vendor.conf
 TARGET_NEEDS_BLUETOOTH_INIT_DELAY := true
 
+# Misc flags
+COMMON_GLOBAL_CFLAGS += -DNEEDS_VECTORIMPL_SYMBOLS
+
 # audio
 COMMON_GLOBAL_CFLAGS += -DICS_AUDIO_BLOB 
 TARGET_DONT_SET_AUDIO_AAC_FORMAT := true
 
 # camera
 COMMON_GLOBAL_CFLAGS += -DICS_CAMERA_BLOB
+
+# Fix Graphics Issues
+PRODUCT_PROPERTY_OVERRIDES += \
+  ro.zygote.disable_gl_preload=true \
+  ro.bq.gpu_to_cpu_unsupported=true
 
 # graphics
 BOARD_USE_SKIA_LCDTEXT := true
@@ -83,7 +91,9 @@ BOARD_NO_ALLOW_DEQUEUE_CURRENT_BUFFER := true
 
 # egl
 BOARD_EGL_CFG := device/lge/p990/egl.cfg
-BOARD_EGL_NEEDS_LEGACY_FB := true
+#BOARD_EGL_NEEDS_LEGACY_FB := true
+BOARD_EGL_NEEDS_FNW := true
+BOARD_EGL_WORKAROUND_BUG_10194508 := true
 
 # fm
 #BOARD_HAVE_FM_RADIO := true
