@@ -56,17 +56,17 @@ WIFI_DRIVER_MODULE_NAME         := "wireless"
 WIFI_DRIVER_MODULE_PATH         := "/system/lib/modules/wireless.ko"
 WIFI_DRIVER_MODULE_ARG          := "firmware_path=/system/etc/wl/rtecdc.bin nvram_path=/etc/wl/nvram.txt config_path=/data/misc/wifi/config"
 WPA_SUPPLICANT_VERSION          := VER_0_8_X
-BOARD_HOSTAPD_PRIVATE_LIB := lib_driver_cmd_wext
+BOARD_HOSTAPD_PRIVATE_LIB	:= lib_driver_cmd_wext
 BOARD_WPA_SUPPLICANT_PRIVATE_LIB := lib_driver_cmd_wext
 WIFI_DRIVER_HAS_LGE_SOFTAP      := true
-BOARD_WPA_SUPPLICANT_DRIVER := WEXT
+BOARD_WPA_SUPPLICANT_DRIVER	:= WEXT
 
 # bluetooth
-BOARD_HAVE_BLUETOOTH := true
-BOARD_HAVE_BLUETOOTH_BCM := true
-BOARD_BLUEDROID_VENDOR_CONF := device/lge/p990/config/bluetooth/vnd_star.txt
+BOARD_HAVE_BLUETOOTH 		:= true
+BOARD_HAVE_BLUETOOTH_BCM	:= true
+BOARD_BLUEDROID_VENDOR_CONF	:= device/lge/p990/config/bluetooth/vnd_star.txt
 BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := device/lge/p990/config/bluetooth
-BOARD_BLUETOOTH_LIBBT_VNDCFG := device/lge/p990/config/bluetooth/bt_vendor.conf
+BOARD_BLUETOOTH_LIBBT_VNDCFG	:= device/lge/p990/config/bluetooth/bt_vendor.conf
 TARGET_NEEDS_BLUETOOTH_INIT_DELAY := true
 
 # Misc flags
