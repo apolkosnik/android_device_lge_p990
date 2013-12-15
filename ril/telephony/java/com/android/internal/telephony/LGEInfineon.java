@@ -240,7 +240,7 @@ public class LGEInfineon extends RIL implements CommandsInterface {
                 break;
             case RIL_UNSOL_LGE_UNSOL:
                 /* Adjust request IDs */
-            	if ("LGP990AT".equalsIgnoreCase(basebandSplit[0])) {
+            	if ("LGP999AT".equalsIgnoreCase(basebandSplit[0])) {
             		RIL_REQUEST_HANG_UP_CALL = 206;
             	}
                 break;
@@ -275,13 +275,13 @@ public class LGEInfineon extends RIL implements CommandsInterface {
                     if ("LGSU660AT".equalsIgnoreCase(basebandSplit[0])) {
                        ignoreNitz = true;
                     } else {
-                    	// Detect V28e or newer BBs like
-                        // LGP990AT-00-V30a-EUR-XXX-NOV-30-2012+0
-                        if ("LGP990AT".equalsIgnoreCase(basebandSplit[0])
+                    	// Detect V21e or newer BBs like
+                        // LGP999AT-00-V21e-TMO-US-JUL-15-2011+0
+                        if ("LGP999AT".equalsIgnoreCase(basebandSplit[0])
                         		&& (basebandSplit.length > 2)
                                	 	&& (basebandSplit[2].length() == 4)
                                 	&& (basebandSplit[2].toLowerCase().startsWith("v"))
-                                	&& (basebandSplit[2].compareToIgnoreCase("V28e") >= 0)) {
+                                	&& (basebandSplit[2].compareToIgnoreCase("V21e") >= 0)) {
                         	ignoreNitz = true;
                         }
                     }

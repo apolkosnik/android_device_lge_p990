@@ -1,4 +1,4 @@
-ifeq ($(TARGET_BOOTLOADER_BOARD_NAME),p990)
+ifeq ($(TARGET_BOOTLOADER_BOARD_NAME),p999)
 include $(call first-makefiles-under,$(call my-dir))
 endif
 

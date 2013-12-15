@@ -24,16 +24,12 @@
 #include <strings.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
-#include <string.h>
 
 #include <cutils/bitops.h>
 
 #include <hardware/hardware.h>
 #include <system/audio.h>
 #include <hardware/audio_effect.h>
-#ifdef QCOM_LISTEN_FEATURE_ENABLE
-#include <listen_types.h>
-#endif
 
 __BEGIN_DECLS
 
@@ -77,6 +73,7 @@ __BEGIN_DECLS
 #define AUDIO_HARDWARE_MODULE_ID_A2DP "a2dp"
 #define AUDIO_HARDWARE_MODULE_ID_USB "usb"
 #define AUDIO_HARDWARE_MODULE_ID_REMOTE_SUBMIX "r_submix"
+#define AUDIO_HARDWARE_MODULE_ID_CODEC_OFFLOAD "codec_offload"
 
 /**************************************/
 
@@ -170,14 +167,16 @@ __BEGIN_DECLS
 
 /**************************************/
 
-/* common audio stream configuration parameters */
+/* common audio stream configuration parameters
+ * You should memset() the entire structure to zero before use to
+ * ensure forward compatibility
+ */
 struct audio_config {
     uint32_t sample_rate;
     audio_channel_mask_t channel_mask;
     audio_format_t  format;
     audio_offload_info_t offload_info;
 };
-
 typedef struct audio_config audio_config_t;
 
 #ifdef QCOM_HARDWARE
@@ -319,6 +318,13 @@ struct audio_stream_out {
      * negative status_t. If at least one frame was written successfully prior to the error,
      * it is suggested that the driver return that successful (short) byte count
      * and then return an error in the subsequent call.
+     *
+     * If set_callback() has previously been called to enable non-blocking mode
+     * the write() is not allowed to block. It must write only the number of
+     * bytes that currently fit in the driver/hardware buffer and then return
+     * this byte count. If this is less than the requested write size the
+     * callback function must be called when more space is available in the
+     * driver/hardware buffer.
      */
     ssize_t (*write)(struct audio_stream_out *stream, const void* buffer,
                      size_t bytes);
@@ -329,14 +335,6 @@ struct audio_stream_out {
     int (*get_render_position)(const struct audio_stream_out *stream,
                                uint32_t *dsp_frames);
 
-    /**
-     * get the local time at which the next write to the audio driver will be presented.
-     * The units are microseconds, where the epoch is decided by the local audio HAL.
-     */
-    int (*get_next_write_timestamp)(const struct audio_stream_out *stream,
-                                    int64_t *timestamp);
-
-#ifndef ICS_AUDIO_BLOB
 #ifdef QCOM_HARDWARE
     /**
      * start audio data rendering
@@ -344,44 +342,17 @@ struct audio_stream_out {
     int (*start)(struct audio_stream_out *stream);
 
     /**
-     * pause audio rendering
-     */
-    int (*pause)(struct audio_stream_out *stream);
-
-    /**
-     * flush audio data with driver
-     */
-    int (*flush)(struct audio_stream_out *stream);
-
-    /**
      * stop audio data rendering
      */
     int (*stop)(struct audio_stream_out *stream);
+#endif
 
     /**
-    * return the current timestamp after quering to the driver
+     * get the local time at which the next write to the audio driver will be presented.
+     * The units are microseconds, where the epoch is decided by the local audio HAL.
      */
-    int (*get_time_stamp)(const struct audio_stream_out *stream,
-                               uint64_t *time_stamp);
-    /**
-    * EOS notification from HAL to Player
-     */
-    int (*set_observer)(const struct audio_stream_out *stream,
-                               void *observer);
-    /**
-     * Get the physical address of the buffer allocated in the
-     * driver
-     */
-    int (*get_buffer_info) (const struct audio_stream_out *stream,
-                                struct buf_info **buf);
-    /**
-     * Check if next buffer is available. Waits until next buffer is
-     * available
-     */
-    int (*is_buffer_available) (const struct audio_stream_out *stream,
-                                     int *isAvail);
-#endif
-#endif
+    int (*get_next_write_timestamp)(const struct audio_stream_out *stream,
+                                    int64_t *timestamp);
 
     /**
      * set the callback function for notifying completion of non-blocking
@@ -391,7 +362,6 @@ struct audio_stream_out {
      */
     int (*set_callback)(struct audio_stream_out *stream,
             stream_callback_t callback, void *cookie);
-
 
     /**
      * Notifies to the audio driver to stop playback however the queued buffers are
@@ -457,48 +427,32 @@ struct audio_stream_out {
      */
     int (*get_presentation_position)(const struct audio_stream_out *stream,
                                uint64_t *frames, struct timespec *timestamp);
-
+#ifdef QCOM_HARDWARE
+    /**
+    * return the current timestamp after quering to the driver
+     */
+    int (*get_time_stamp)(const struct audio_stream_out *stream,
+                               uint64_t *time_stamp);
+    /**
+    * EOS notification from HAL to Player
+     */
+    int (*set_observer)(const struct audio_stream_out *stream,
+                               void *observer);
+    /**
+     * Get the physical address of the buffer allocated in the
+     * driver
+     */
+    int (*get_buffer_info) (const struct audio_stream_out *stream,
+                                struct buf_info **buf);
+    /**
+     * Check if next buffer is available. Waits until next buffer is
+     * available
+     */
+    int (*is_buffer_available) (const struct audio_stream_out *stream,
+                                     int *isAvail);
+#endif
 };
 typedef struct audio_stream_out audio_stream_out_t;
-
-#ifdef QCOM_HARDWARE
-/**
- * audio_broadcast_stream is the abstraction interface for the
- * audio output hardware.
- *
- * It provides information about various properties of the audio output
- * hardware driver.
- */
-
-struct audio_broadcast_stream {
-    struct audio_stream common;
-
-    /**
-     * return the audio hardware driver latency in milli seconds.
-     */
-    uint32_t (*get_latency)(const struct audio_broadcast_stream *stream);
-
-    /**
-     * Use this method in situations where audio mixing is done in the
-     * hardware. This method serves as a direct interface with hardware,
-     * allowing you to directly set the volume as apposed to via the framework.
-     * This method might produce multiple PCM outputs or hardware accelerated
-     * codecs, such as MP3 or AAC.
-     */
-    int (*set_volume)(struct audio_broadcast_stream *stream, float left, float right);
-
-    int (*mute)(struct audio_broadcast_stream *stream, bool mute);
-
-    int (*start)(struct audio_broadcast_stream *stream, int64_t absTimeToStart);
-    /**
-     * write audio buffer to driver. Returns number of bytes written
-     */
-    ssize_t (*write)(struct audio_broadcast_stream *stream, const void* buffer,
-                     size_t bytes, int64_t timestamp, int audioType);
-
-};
-typedef struct audio_broadcast_stream audio_broadcast_stream_t;
-#endif
 
 struct audio_stream_in {
     struct audio_stream common;
@@ -534,21 +488,19 @@ typedef struct audio_stream_in audio_stream_in_t;
 static inline size_t audio_stream_frame_size(const struct audio_stream *s)
 {
     size_t chan_samp_sz;
+#ifdef QCOM_HARDWARE
     uint32_t chan_mask = s->get_channels(s);
     int format = s->get_format(s);
-#ifdef QCOM_HARDWARE
     char *tmpparam;
     int isParamEqual;
 
     if(!s)
         return 0;
-
     if (audio_is_input_channel(chan_mask)) {
         chan_mask &= (AUDIO_CHANNEL_IN_STEREO | \
                       AUDIO_CHANNEL_IN_MONO | \
                       AUDIO_CHANNEL_IN_5POINT1);
     }
-
     tmpparam = s->get_parameters(s, "voip_flag");
     isParamEqual = !strncmp(tmpparam,"voip_flag=1", sizeof("voip_flag=1"));
     free(tmpparam);
@@ -572,9 +524,6 @@ static inline size_t audio_stream_frame_size(const struct audio_stream *s)
     case AUDIO_FORMAT_AMR_WB:
         chan_samp_sz = 61;
         break;
-#else
-    switch (s->get_format(s)) {
-#endif
     case AUDIO_FORMAT_PCM_16_BIT:
         chan_samp_sz = sizeof(int16_t);
         break;
@@ -583,8 +532,17 @@ static inline size_t audio_stream_frame_size(const struct audio_stream *s)
         chan_samp_sz = sizeof(int8_t);
         break;
     }
-
     return popcount(chan_mask) * chan_samp_sz;
+#else
+    audio_format_t format = s->get_format(s);
+
+    if (audio_is_linear_pcm(format)) {
+        chan_samp_sz = audio_bytes_per_sample(format);
+        return popcount(s->get_channels(s)) * chan_samp_sz;
+    }
+
+    return sizeof(int8_t);
+#endif
 }
 
 
@@ -643,19 +601,12 @@ struct audio_hw_device {
     int (*get_master_volume)(struct audio_hw_device *dev, float *volume);
 #endif
 
-#ifdef QCOM_FM_ENABLED
-    /** set the fm audio volume. Range is between 0.0 and 1.0 */
-    int (*set_fm_volume)(struct audio_hw_device *dev, float volume);
-#endif
-
     /**
      * set_mode is called when the audio mode changes. AUDIO_MODE_NORMAL mode
      * is for standard audio playback, AUDIO_MODE_RINGTONE when a ringtone is
      * playing, and AUDIO_MODE_IN_CALL when a call is in progress.
      */
     int (*set_mode)(struct audio_hw_device *dev, audio_mode_t mode);
-int (*dummy1)();
-int (*dummy2)();
 
     /* mic mute */
     int (*set_mic_mute)(struct audio_hw_device *dev, bool state);
@@ -698,28 +649,8 @@ int (*dummy2)();
                               struct audio_stream_out **out);
 #endif
 
-#ifdef QCOM_ICS_LPA_COMPAT
-    /** This method creates and opens the audio hardware output session */
-    int (*open_output_session)(struct audio_hw_device *dev, uint32_t devices,
-                              int *format, int sessionId,
-                              struct audio_stream_out **out);
-#endif
-
     void (*close_output_stream)(struct audio_hw_device *dev,
                                 struct audio_stream_out* stream_out);
-
-#if defined (QCOM_HARDWARE) || defined (STE_SAMSUNG_HARDWARE)
-    /** This method creates and opens the audio hardware output
-     *  for broadcast stream */
-    int (*open_broadcast_stream)(struct audio_hw_device *dev, uint32_t devices,
-                                 int format, uint32_t channels,
-                                 uint32_t sample_rate,
-                                 uint32_t audio_source,
-                                 struct audio_broadcast_stream **out);
-
-    void (*close_broadcast_stream)(struct audio_hw_device *dev,
-                                   struct audio_broadcast_stream *out);
-#endif
 
     /** This method creates and opens the audio hardware input stream */
 #ifndef ICS_AUDIO_BLOB
@@ -757,20 +688,6 @@ int (*dummy2)();
      * method may leave it set to NULL.
      */
     int (*get_master_mute)(struct audio_hw_device *dev, bool *mute);
-#endif
-
-#ifdef QCOM_LISTEN_FEATURE_ENABLE
-    /** This method opens the listen session and returns a handle */
-    status_t (*open_listen_session)(struct audio_hw_device *dev,
-                                    struct listen_session** handle);
-
-    /** This method closes the listen session  */
-    status_t (*close_listen_session)(struct audio_hw_device *dev,
-                                     struct listen_session* handle);
-
-    /** This method sets the mad observer callback  */
-    status_t (*set_mad_observer)(struct audio_hw_device *dev,
-                                 listen_callback_t cb_func);
 #endif
 };
 typedef struct audio_hw_device audio_hw_device_t;

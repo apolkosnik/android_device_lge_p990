@@ -1,10 +1,4 @@
-Device configuration for the LGE P990 (LG Optimus 2X)
-It's built for the new (ICS) bootloader.
-
-There exists a tool to convert it to the old bootloader:
-      http://forum.xda-developers.com/showthread.php?t=2412273
-
-
+Device configuration for the LGE P999 (T-Mobile G2x)
 
 Copyright (C) 2011 The CyanogenMod Project
 
